@@ -12,6 +12,8 @@ st.set_page_config(
 )
 
 DOCS_DIR = "docs"
+if not os.path.exists(DOCS_DIR):
+    os.makedirs(DOCS_DIR, exist_ok=True)
 
 # ---------- Design system (dark neon) ----------
 st.markdown("""
