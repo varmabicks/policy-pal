@@ -195,7 +195,7 @@ def get_llm_response(system_prompt, user_prompt):
         from groq import Groq
         client = Groq(api_key=groq_key)
         resp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama3-70b-8192",  # Updated supported Groq model string
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -204,7 +204,6 @@ def get_llm_response(system_prompt, user_prompt):
         return resp.choices[0].message.content
     except Exception as e:
         return ("⚠️ Debug: `" + str(e) + "`\n\n" + HR_CONTACT)
-
 collection = get_collection()
 model = get_model()
 
