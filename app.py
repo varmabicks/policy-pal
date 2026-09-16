@@ -191,11 +191,16 @@ def get_collection():
 
 def get_llm_response(system_prompt, user_prompt):
     try:
-        groq_key = st.secrets["GROQ_API_KEY"]
+        if "GROQ_API_KEY" not in st.secrets:
+            return f"⚠️ API Key Missing! Please add `GROQ_API_KEY` to `.streamlit/secrets.toml`.\n\n{HR_CONTACT}"
+
         from groq import Groq
+
+        groq_key = st.secrets["GROQ_API_KEY"]
         client = Groq(api_key=groq_key)
         resp = client.chat.completions.create(
-            model="llama3-70b-8192",  # Updated supported Groq model string
+            # CHANGED: Updated from llama3-70b-8192 to llama-3.3-70b-versatile
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -203,9 +208,7 @@ def get_llm_response(system_prompt, user_prompt):
         )
         return resp.choices[0].message.content
     except Exception as e:
-        return ("⚠️ Debug: `" + str(e) + "`\n\n" + HR_CONTACT)
-collection = get_collection()
-model = get_model()
+        return f"⚠️ Debug: `{str(e)}`\n\n{HR_CONTACT}"
 
 # ---------- Chat ----------
 if "messages" not in st.session_state:
