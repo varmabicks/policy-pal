@@ -15,6 +15,11 @@ DOCS_DIR = "docs"
 if not os.path.exists(DOCS_DIR):
     os.makedirs(DOCS_DIR, exist_ok=True)
 
+# ---------- HR contact ----------
+HR_PHONE = "+91 8125713172"
+HR_EMAIL = "nsaipranavvarma@gmail.com"
+HR_CONTACT = f"📞 **{HR_PHONE}**\n\n📧 **{HR_EMAIL}**"
+
 # ---------- Design system (dark neon) ----------
 st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -47,7 +52,7 @@ st.markdown("""
     .feature-row { display: flex; gap: 0.75rem; margin: 1rem 0 1.4rem 0; }
     .feature {
         flex: 1; border-radius: 18px; padding: 1rem 0.7rem;
-        text-align: center; font-size: 0.82rem; font-weight: 600;
+        text-align: center; font-size: 0.82rem; font: 600;
     }
     .feature .ico { font-size: 1.7rem; display: block; margin-bottom: 6px; }
     .f1 { background: #2A2140; border: 2px solid #7C3AED; color: #E9D5FF !important; }
@@ -138,6 +143,11 @@ with st.sidebar:
     st.caption("PolicyPal reads your official HR, Leave & Security policies "
                "so you don't have to scroll through PDFs.")
     st.divider()
+    st.markdown("### 📞 Need a human?")
+    st.caption("If I can't answer your question, connect with HR directly:")
+    st.write("📞 " + HR_PHONE)
+    st.write("📧 " + HR_EMAIL)
+    st.divider()
     st.markdown("### 📚 What I know")
     for fname in sorted(os.listdir(DOCS_DIR)):
         if fname.endswith(".txt"):
@@ -190,7 +200,7 @@ def get_llm_response(system_prompt, user_prompt):
         from groq import Groq
         client = Groq(api_key=groq_key)
         resp = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -198,15 +208,20 @@ def get_llm_response(system_prompt, user_prompt):
         )
         return resp.choices[0].message.content
     except (KeyError, FileNotFoundError):
-        import ollama
-        resp = ollama.chat(
-            model="llama3.2",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-        return resp["message"]["content"]
+        try:
+            import ollama
+            resp = ollama.chat(
+                model="llama3.2",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+            return resp["message"]["content"]
+        except Exception:
+            return ("Sorry, I ran into a technical issue. Please connect with HR directly:\n\n" + HR_CONTACT)
+    except Exception:
+        return ("Sorry, I couldn't fetch an answer just now. Please connect with HR directly:\n\n" + HR_CONTACT)
 
 collection = get_collection()
 model = get_model()
@@ -219,7 +234,8 @@ SYSTEM_PROMPT = (
     "You are PolicyPal, a warm, professional company policy assistant with friendly energy. "
     "Answer ONLY using the provided policy context. Be concise, human and helpful — "
     "like a cool HR friend, never robotic. "
-    "If the answer is not in the context, say so honestly and suggest contacting HR at hr@company.com."
+    "If the answer is not in the context, or you are unsure, say so honestly and tell the user "
+    f"to connect with HR directly at {HR_PHONE} (mobile) or {HR_EMAIL} (email) for further assistance."
 )
 
 # Quick-start chips for first-time users
@@ -260,7 +276,7 @@ if question:
     context = "\n\n".join(results["documents"][0])
     sources = []
     for s in results["metadatas"][0]:
-        if s and "source" in s and s["source"] not in sources:
+ if s and "source" in s and s["source"] not in sources:
             sources.append(s["source"])
 
     with st.chat_message("assistant", avatar="✨"):
@@ -280,9 +296,10 @@ if question:
     )
 
 # ---------- Footer ----------
-st.markdown("""
+st.markdown(f"""
 <div class="site-footer">
-    <b>PolicyPal ✨</b> — answers are informational; for official matters contact HR<br>
+    <b>PolicyPal ✨</b> — for official matters contact HR: 📞 {HR_PHONE} · 📧 {HR_EMAIL}<br>
     Made with 💜, caffeine ☕, and very few bugs
 </div>
 """, unsafe_allow_html=True)
+
