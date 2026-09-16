@@ -1,7 +1,7 @@
-import streamlit as st
+import os
 import chromadb
 from sentence_transformers import SentenceTransformer
-import os
+import streamlit as st
 
 # ---------- Page setup ----------
 st.set_page_config(
@@ -21,7 +21,8 @@ HR_EMAIL = "nsaipranavvarma@gmail.com"
 HR_CONTACT = f"📞 **{HR_PHONE}**\n\n📧 **{HR_EMAIL}**"
 
 # ---------- Design system (dark neon) ----------
-st.markdown("""
+st.markdown(
+    """
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
 <style>
@@ -86,28 +87,40 @@ st.markdown("""
     }
     .site-footer b { color: #E2E8F0; }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # ---------- Hero ----------
-st.markdown("""
+st.markdown(
+    """
 <div class="hero">
     <div class="tag">✦ MEET YOUR WORK BESTIE</div>
     <h1>PolicyPal ✨</h1>
     <p>👋 Company policies, minus the boring PDFs.<br>Ask anything — leave, HR, security — get instant answers with receipts.</p>
 </div>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
-st.markdown("""
+st.markdown(
+    """
 <div class="feature-row">
     <div class="feature f1"><span class="ico">⚡</span>Answers in seconds<br>no PDF scrolling</div>
     <div class="feature f2"><span class="ico">🧾</span>Receipts included<br>cites the exact policy</div>
     <div class="feature f3"><span class="ico">🫶</span>Zero judgment<br>ask anything, anytime</div>
 </div>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # ---------- Values banner ----------
-st.markdown('<div class="values-title">Our people are our roots 🌱</div>', unsafe_allow_html=True)
-st.markdown("""
+st.markdown(
+    '<div class="values-title">Our people are our roots 🌱</div>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    """
 <div class="values-row">
     <div class="value-card v1">
         <span class="emo">🌱</span>
@@ -130,13 +143,17 @@ st.markdown("""
         <p>Mental health days, family insurance & zero burnout culture.</p>
     </div>
 </div>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # ---------- Sidebar ----------
 with st.sidebar:
     st.markdown("### 🚀 About PolicyPal")
-    st.caption("PolicyPal reads your official HR, Leave & Security policies "
-               "so you don't have to scroll through PDFs.")
+    st.caption(
+        "PolicyPal reads your official HR, Leave & Security policies "
+        "so you don't have to scroll through PDFs."
+    )
     st.divider()
     st.markdown("### 📞 Need a human?")
     st.caption("If I can't answer your question, connect with HR directly:")
@@ -144,31 +161,46 @@ with st.sidebar:
     st.write("📧 " + HR_EMAIL)
     st.divider()
     st.markdown("### 📚 What I know")
-    for fname in sorted(os.listdir(DOCS_DIR)):
-        if fname.endswith(".txt"):
-            st.write("• " + fname.replace("sop_", "").replace(".txt", "").replace("_", " ").title())
+    if os.path.exists(DOCS_DIR):
+        for fname in sorted(os.listdir(DOCS_DIR)):
+            if fname.endswith(".txt"):
+                st.write(
+                    "• "
+                    + fname.replace("sop_", "")
+                    .replace(".txt", "")
+                    .replace("_", " ")
+                    .title()
+                )
     st.divider()
     if st.button("🔄 Fresh start", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
 
-# ---------- Knowledge base ----------
-@st.cache_resource
-def build_index():
-    documents = []
-    for fname in os.listdir(DOCS_DIR):
-        if fname.endswith(".txt"):
-            with open(os.path.join(DOCS_DIR, fname), "r", encoding="utf-8") as f:
-                text = f.read()
-            for i in range(0, len(text), 500):
-                chunk = text[i:i+500].strip()
-                if chunk:
-                    documents.append({"id": f"{fname}_{i}", "text": chunk, "source": fname})
-    return documents
-
+# ---------- Knowledge Base Setup ----------
 @st.cache_resource
 def get_model():
     return SentenceTransformer("all-MiniLM-L6-v2")
+
+@st.cache_resource
+def build_index():
+    documents = []
+    if os.path.exists(DOCS_DIR):
+        for fname in os.listdir(DOCS_DIR):
+            if fname.endswith(".txt"):
+                file_path = os.path.join(DOCS_DIR, fname)
+                with open(file_path, "r", encoding="utf-8") as f:
+                    text = f.read()
+                for i in range(0, len(text), 500):
+                    chunk = text[i : i + 500].strip()
+                    if chunk:
+                        documents.append(
+                            {
+                                "id": f"{fname}_{i}",
+                                "text": chunk,
+                                "source": fname,
+                            }
+                        )
+    return documents
 
 @st.cache_resource
 def get_collection():
@@ -179,15 +211,24 @@ def get_collection():
         pass
     col = client.get_or_create_collection("sops")
     docs = build_index()
-    model = get_model()
-    embeddings = model.encode([d["text"] for d in docs]).tolist()
-    col.add(
-        ids=[d["id"] for d in docs],
-        documents=[d["text"] for d in docs],
-        embeddings=embeddings,
-        metadatas=[{"source": d["source"]} for d in docs],
-    )
+    if docs:
+        transformer = get_model()
+        embeddings = transformer.encode([d["text"] for d in docs]).tolist()
+        col.add(
+            ids=[d["id"] for d in docs],
+            documents=[d["text"] for d in docs],
+            embeddings=embeddings,
+            metadatas=[{"source": d["source"]} for d in docs],
+        )
     return col
+
+# Guarantee global scope for critical AI resources
+try:
+    model = get_model()
+    collection = get_collection()
+except Exception as err:
+    st.error(f"⚠️ Error initializing knowledge base embeddings: {err}")
+    st.stop()
 
 def get_llm_response(system_prompt, user_prompt):
     try:
@@ -199,7 +240,6 @@ def get_llm_response(system_prompt, user_prompt):
         groq_key = st.secrets["GROQ_API_KEY"]
         client = Groq(api_key=groq_key)
         resp = client.chat.completions.create(
-            # CHANGED: Updated from llama3-70b-8192 to llama-3.3-70b-versatile
             model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -210,7 +250,7 @@ def get_llm_response(system_prompt, user_prompt):
     except Exception as e:
         return f"⚠️ Debug: `{str(e)}`\n\n{HR_CONTACT}"
 
-# ---------- Chat ----------
+# ---------- Chat State & Setup ----------
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -227,25 +267,32 @@ if not st.session_state.messages:
     st.markdown("**Popular questions 👇**")
     b1, b2, b3 = st.columns(3)
     with b1:
-        if st.button("🌴 Leave days?"):
+        if st.button("🌴 Leave days?", use_container_width=True):
             st.session_state.pending_q = "How many paid leave days do I get?"
+            st.rerun()
     with b2:
-        if st.button("🕒 Late policy?"):
+        if st.button("🕒 Late policy?", use_container_width=True):
             st.session_state.pending_q = "What happens if I'm late to work?"
+            st.rerun()
     with b3:
-        if st.button("🎣 Phishing?"):
-            st.session_state.pending_q = "What should I do about a suspicious email?"
+        if st.button("🎣 Phishing?", use_container_width=True):
+            st.session_state.pending_q = (
+                "What should I do about a suspicious email?"
+            )
+            st.rerun()
 
 # Show chat history
 for msg in st.session_state.messages:
-    with st.chat_message(msg["role"], avatar=("🙋" if msg["role"] == "user" else "✨")):
+    with st.chat_message(
+        msg["role"], avatar=("🙋" if msg["role"] == "user" else "✨")
+    ):
         st.markdown(msg["content"])
         if "sources" in msg and msg["sources"]:
             with st.expander("🧾 Receipts (sources)"):
                 for s in msg["sources"]:
                     st.write("• " + s)
 
-# ---------- Input ----------
+# ---------- Input & Retrieval Pipeline ----------
 question = st.chat_input("Drop your question here... 💬")
 if not question and st.session_state.get("pending_q"):
     question = st.session_state.pop("pending_q")
@@ -255,14 +302,21 @@ if question:
     with st.chat_message("user", avatar="🙋"):
         st.markdown(question)
 
+    # Retrieval
     q_emb = model.encode([question]).tolist()
     results = collection.query(query_embeddings=q_emb, n_results=3)
-    context = "\n\n".join(results["documents"][0])
-    sources = []
-    for s in results["metadatas"][0]:
-        if s and "source" in s and s["source"] not in sources:
-            sources.append(s["source"])
 
+    if results and results.get("documents") and results["documents"][0]:
+        context = "\n\n".join(results["documents"][0])
+        sources = []
+        for s in results["metadatas"][0]:
+            if s and "source" in s and s["source"] not in sources:
+                sources.append(s["source"])
+    else:
+        context = "No relevant context found in uploaded policy documents."
+        sources = []
+
+    # Inference
     with st.chat_message("assistant", avatar="✨"):
         with st.spinner("Digging through the docs..."):
             answer = get_llm_response(
@@ -280,9 +334,12 @@ if question:
     )
 
 # ---------- Footer ----------
-st.markdown(f"""
+st.markdown(
+    f"""
 <div class="site-footer">
     <b>PolicyPal ✨</b> — for official matters contact HR: 📞 {HR_PHONE} · 📧 {HR_EMAIL}<br>
     Made with 💜, caffeine ☕, and very few bugs
 </div>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
