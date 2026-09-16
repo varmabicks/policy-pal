@@ -1,5 +1,6 @@
 import os
 import chromadb
+from groq import Groq
 from sentence_transformers import SentenceTransformer
 import streamlit as st
 
@@ -147,46 +148,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ---------- Sidebar ----------
-with st.sidebar:
-    if st.button("🔍 Check Available Groq Models"):
-        try:
-            from groq import Groq
-            client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-            models = client.models.list()
-            model_ids = [m.id for m in models.data]
-            st.write("**Your available Groq models:**")
-            st.json(model_ids)
-        except Exception as e:
-            st.error(f"Error fetching models: {e}")
-    st.markdown("### 📞 Need a human?")
-    st.caption("If I can't answer your question, connect with HR directly:")
-    st.write("📞 " + HR_PHONE)
-    st.write("📧 " + HR_EMAIL)
-    st.divider()
-    st.markdown("### 📚 What I know")
-    if os.path.exists(DOCS_DIR):
-        for fname in sorted(os.listdir(DOCS_DIR)):
-            if fname.endswith(".txt"):
-                st.write(
-                    "• "
-                    + fname.replace("sop_", "")
-                    .replace(".txt", "")
-                    .replace("_", " ")
-                    .title()
-                )
-    st.divider()
-    if st.button("🔄 Fresh start", use_container_width=True):
-        st.session_state.messages = []
-        st.rerun()
-
 # ---------- Knowledge Base Setup ----------
-@st.cache_resource
-def get_model():
+@st.cache_resource(show_spinner="Loading NLP Embedding Model...")
+def load_embedder():
     return SentenceTransformer("all-MiniLM-L6-v2")
 
-@st.cache_resource
-def build_index():
+@st.cache_resource(show_spinner="Indexing Policy Documents...")
+def build_vector_store():
     documents = []
     if os.path.exists(DOCS_DIR):
         for fname in os.listdir(DOCS_DIR):
@@ -204,50 +172,46 @@ def build_index():
                                 "source": fname,
                             }
                         )
-    return documents
 
-@st.cache_resource
-def get_collection():
     client = chromadb.Client()
     try:
         client.delete_collection("sops")
     except Exception:
         pass
+
     col = client.get_or_create_collection("sops")
-    docs = build_index()
-    if docs:
-        transformer = get_model()
-        embeddings = transformer.encode([d["text"] for d in docs]).tolist()
+    if documents:
+        transformer = load_embedder()
+        embeddings = transformer.encode([d["text"] for d in documents]).tolist()
         col.add(
-            ids=[d["id"] for d in docs],
-            documents=[d["text"] for d in docs],
+            ids=[d["id"] for d in documents],
+            documents=[d["text"] for d in documents],
             embeddings=embeddings,
-            metadatas=[{"source": d["source"]} for d in docs],
+            metadatas=[{"source": d["source"]} for d in documents],
         )
     return col
 
-# Guarantee global scope for critical AI resources
+# Safely load cached AI assets into global scope
 try:
-    model = get_model()
-    collection = get_collection()
-except Exception as err:
-    st.error(f"⚠️ Error initializing knowledge base embeddings: {err}")
+    model = load_embedder()
+    collection = build_vector_store()
+except Exception as e:
+    st.error(f"⚠️ Vector Store Error: {e}")
     st.stop()
 
+# ---------- LLM Handler ----------
 def get_llm_response(system_prompt, user_prompt):
     try:
         if "GROQ_API_KEY" not in st.secrets:
             return f"⚠️ API Key Missing! Please add `GROQ_API_KEY` to `.streamlit/secrets.toml`.\n\n{HR_CONTACT}"
 
-        from groq import Groq
-
         groq_key = st.secrets["GROQ_API_KEY"]
         client = Groq(api_key=groq_key)
 
-        # List models in priority order
+        # Updated Active Production Models on Groq
         models_to_try = [
-            "llama-3.3-70b-specdec",
             "llama-3.1-8b-instant",
+            "llama-3.1-70b-versatile",
             "mixtral-8x7b-32768",
         ]
 
@@ -269,7 +233,40 @@ def get_llm_response(system_prompt, user_prompt):
     except Exception as e:
         return f"⚠️ Debug: `{str(e)}`\n\n{HR_CONTACT}"
 
-# ---------- Chat State & Setup ----------
+# ---------- Sidebar ----------
+with st.sidebar:
+    if st.button("🔍 Check Available Groq Models", use_container_width=True):
+        try:
+            client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+            models = client.models.list()
+            model_ids = [m.id for m in models.data]
+            st.write("**Your available Groq models:**")
+            st.json(model_ids)
+        except Exception as e:
+            st.error(f"Error fetching models: {e}")
+            
+    st.markdown("### 📞 Need a human?")
+    st.caption("If I can't answer your question, connect with HR directly:")
+    st.write("📞 " + HR_PHONE)
+    st.write("📧 " + HR_EMAIL)
+    st.divider()
+    st.markdown("### 📚 What I know")
+    if os.path.exists(DOCS_DIR):
+        for fname in sorted(os.listdir(DOCS_DIR)):
+            if fname.endswith(".txt"):
+                st.write(
+                    "• "
+                    + fname.replace("sop_", "")
+                    .replace(".txt", "")
+                    .replace("_", " ")
+                    .title()
+                )
+    st.divider()
+    if st.button("🔄 Fresh start", use_container_width=True):
+        st.session_state.messages = []
+        st.rerun()
+
+# ---------- Chat State & Prompt Setup ----------
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -281,7 +278,7 @@ SYSTEM_PROMPT = (
     f"to connect with HR directly at {HR_PHONE} (mobile) or {HR_EMAIL} (email) for further assistance."
 )
 
-# Quick-start chips for first-time users
+# Quick-start chips
 if not st.session_state.messages:
     st.markdown("**Popular questions 👇**")
     b1, b2, b3 = st.columns(3)
@@ -295,12 +292,10 @@ if not st.session_state.messages:
             st.rerun()
     with b3:
         if st.button("🎣 Phishing?", use_container_width=True):
-            st.session_state.pending_q = (
-                "What should I do about a suspicious email?"
-            )
+            st.session_state.pending_q = "What should I do about a suspicious email?"
             st.rerun()
 
-# Show chat history
+# Display Chat History
 for msg in st.session_state.messages:
     with st.chat_message(
         msg["role"], avatar=("🙋" if msg["role"] == "user" else "✨")
@@ -344,7 +339,7 @@ if question:
             )
             st.markdown(answer)
             if sources:
-                with st.expander("🧾 Receipts (sources)"):
+                with st.expander("Receipts (sources)"):
                     for s in sources:
                         st.write("• " + s)
 
