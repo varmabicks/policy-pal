@@ -149,12 +149,16 @@ st.markdown(
 
 # ---------- Sidebar ----------
 with st.sidebar:
-    st.markdown("### 🚀 About PolicyPal")
-    st.caption(
-        "PolicyPal reads your official HR, Leave & Security policies "
-        "so you don't have to scroll through PDFs."
-    )
-    st.divider()
+    if st.button("🔍 Check Available Groq Models"):
+        try:
+            from groq import Groq
+            client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+            models = client.models.list()
+            model_ids = [m.id for m in models.data]
+            st.write("**Your available Groq models:**")
+            st.json(model_ids)
+        except Exception as e:
+            st.error(f"Error fetching models: {e}")
     st.markdown("### 📞 Need a human?")
     st.caption("If I can't answer your question, connect with HR directly:")
     st.write("📞 " + HR_PHONE)
