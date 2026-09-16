@@ -202,22 +202,8 @@ def get_llm_response(system_prompt, user_prompt):
             ],
         )
         return resp.choices[0].message.content
-    except (KeyError, FileNotFoundError):
-        try:
-            import ollama
-            resp = ollama.chat(
-                model="llama3.2",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-            )
-            return resp["message"]["content"]
-               except Exception as e:
-            return ("⚠️ Debug 1: `" + str(e) + "`\n\n" + HR_CONTACT)
-
-      except Exception as e:
-        return ("⚠️ Debug 2: `" + str(e) + "`\n\n" + HR_CONTACT)
+    except Exception as e:
+        return ("⚠️ Debug: `" + str(e) + "`\n\n" + HR_CONTACT)
 
 collection = get_collection()
 model = get_model()
@@ -298,5 +284,3 @@ st.markdown(f"""
     Made with 💜, caffeine ☕, and very few bugs
 </div>
 """, unsafe_allow_html=True)
-
-
