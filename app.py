@@ -239,14 +239,29 @@ def get_llm_response(system_prompt, user_prompt):
 
         groq_key = st.secrets["GROQ_API_KEY"]
         client = Groq(api_key=groq_key)
-        resp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-        return resp.choices[0].message.content
+
+        # List models in priority order
+        models_to_try = [
+            "llama-3.3-70b-specdec",
+            "llama-3.1-8b-instant",
+            "mixtral-8x7b-32768",
+        ]
+
+        for model_id in models_to_try:
+            try:
+                resp = client.chat.completions.create(
+                    model=model_id,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                )
+                return resp.choices[0].message.content
+            except Exception:
+                continue
+
+        return f"⚠️ All LLM endpoints failed. Please reach out directly:\n\n{HR_CONTACT}"
+
     except Exception as e:
         return f"⚠️ Debug: `{str(e)}`\n\n{HR_CONTACT}"
 
