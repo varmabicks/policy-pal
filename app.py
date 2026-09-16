@@ -213,10 +213,11 @@ def get_llm_response(system_prompt, user_prompt):
                 ],
             )
             return resp["message"]["content"]
-        except Exception:
-            return ("Sorry, I ran into a technical issue. Please connect with HR directly:\n\n" + HR_CONTACT)
-    except Exception:
-        return ("Sorry, I couldn't fetch an answer just now. Please connect with HR directly:\n\n" + HR_CONTACT)
+               except Exception as e:
+            return ("⚠️ Debug 1: `" + str(e) + "`\n\n" + HR_CONTACT)
+
+      except Exception as e:
+        return ("⚠️ Debug 2: `" + str(e) + "`\n\n" + HR_CONTACT)
 
 collection = get_collection()
 model = get_model()
