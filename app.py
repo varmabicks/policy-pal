@@ -209,11 +209,20 @@ def get_llm_response(system_prompt, user_prompt):
         client = Groq(api_key=groq_key)
 
         # Updated Active Production Models on Groq
-       models_to_try = [
+      def get_llm_response(system_prompt, user_prompt):
+    try:
+        if "GROQ_API_KEY" not in st.secrets:
+            return f"⚠️ API Key Missing! Please add `GROQ_API_KEY` to `.streamlit/secrets.toml`.\n\n{HR_CONTACT}"
+
+        from groq import Groq
+
+        groq_key = st.secrets["GROQ_API_KEY"]
+        client = Groq(api_key=groq_key)
+
+        models_to_try = [
             "llama-3.1-8b-instant",
             "llama-3.1-70b-versatile",
             "mixtral-8x7b-32768",
-        ]
         ]
 
         for model_id in models_to_try:
