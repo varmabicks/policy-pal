@@ -209,10 +209,11 @@ def get_llm_response(system_prompt, user_prompt):
         client = Groq(api_key=groq_key)
 
         # Updated Active Production Models on Groq
-        models_to_try = [
+       models_to_try = [
             "llama-3.1-8b-instant",
             "llama-3.1-70b-versatile",
             "mixtral-8x7b-32768",
+        ]
         ]
 
         for model_id in models_to_try:
