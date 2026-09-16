@@ -28,7 +28,6 @@ st.markdown("""
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     #MainMenu, footer, header {visibility: hidden;}
 
-    /* ---- Hero ---- */
     .hero {
         background: linear-gradient(120deg, #7C3AED 0%, #EC4899 45%, #F59E0B 100%);
         border-radius: 24px;
@@ -48,18 +47,16 @@ st.markdown("""
     }
     .hero p { font-size: 1.05rem; opacity: 0.95; margin: 0.5rem 0 0 0; }
 
-    /* ---- Feature cards (dark neon) ---- */
     .feature-row { display: flex; gap: 0.75rem; margin: 1rem 0 1.4rem 0; }
     .feature {
         flex: 1; border-radius: 18px; padding: 1rem 0.7rem;
-        text-align: center; font-size: 0.82rem; font: 600;
+        text-align: center; font-size: 0.82rem; font-weight: 600;
     }
     .feature .ico { font-size: 1.7rem; display: block; margin-bottom: 6px; }
     .f1 { background: #2A2140; border: 2px solid #7C3AED; color: #E9D5FF !important; }
     .f2 { background: #3B1D2E; border: 2px solid #EC4899; color: #FBCFE8 !important; }
     .f3 { background: #3A2B10; border: 2px solid #F59E0B; color: #FDE68A !important; }
 
-    /* ---- Values banner ---- */
     .values-title {
         text-align: center; font-size: 1.4rem; font-weight: 800;
         color: #F1F5F9; margin: 1.2rem 0 0.8rem 0;
@@ -77,13 +74,11 @@ st.markdown("""
     .v3 { background: linear-gradient(135deg, #D97706, #FBBF24); }
     .v4 { background: linear-gradient(135deg, #DB2777, #F472B6); }
 
-    /* ---- Chat ---- */
     .stChatMessage {
         border-radius: 18px; border: 1px solid #26263A;
         box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
 
-    /* ---- Footer ---- */
     .site-footer {
         margin-top: 2.5rem; padding: 1.4rem; text-align: center;
         background: #161622; color: #94A3B8; border-radius: 20px; font-size: 0.82rem;
@@ -276,7 +271,7 @@ if question:
     context = "\n\n".join(results["documents"][0])
     sources = []
     for s in results["metadatas"][0]:
- if s and "source" in s and s["source"] not in sources:
+        if s and "source" in s and s["source"] not in sources:
             sources.append(s["source"])
 
     with st.chat_message("assistant", avatar="✨"):
@@ -302,4 +297,5 @@ st.markdown(f"""
     Made with 💜, caffeine ☕, and very few bugs
 </div>
 """, unsafe_allow_html=True)
+
 
